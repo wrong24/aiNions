@@ -1,0 +1,261 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nion-system
+
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: nion-system
+  labels:
+    app: redis
+    component: cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        component: cache
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: nion-system
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+      name: redis
+  selector:
+    app: redis
+
+---
+# Nion Orchestration Engine Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nion-orchestrator
+  namespace: nion-system
+  labels:
+    app: nion
+    component: orchestrator
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: nion
+  template:
+    metadata:
+      labels:
+        app: nion
+        component: orchestrator
+    spec:
+      serviceAccountName: nion-sa
+      containers:
+        - name: nion-app
+          image: nion-orchestrator:latest
+          imagePullPolicy: Never # Use local image for dev
+          ports:
+            - containerPort: 8000
+              name: http
+              protocol: TCP
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-secrets
+                  key: api-key
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8000"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+
+---
+# Nion Service (LoadBalancer)
+apiVersion: v1
+kind: Service
+metadata:
+  name: nion-service
+  namespace: nion-system
+  labels:
+    app: nion
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: nion
+
+---
+# Nion Service (NodePort alternative)
+apiVersion: v1
+kind: Service
+metadata:
+  name: nion-service-nodeport
+  namespace: nion-system
+  labels:
+    app: nion
+spec:
+  type: NodePort
+  ports:
+    - port: 8000
+      targetPort: 8000
+      nodePort: 30080
+      protocol: TCP
+      name: http
+  selector:
+    app: nion
+
+---
+# ServiceAccount for Nion
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nion-sa
+  namespace: nion-system
+
+---
+# ConfigMap for Nion configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nion-config
+  namespace: nion-system
+data:
+  logging_level: "INFO"
+  cache_ttl: "60"
+  max_recursion_depth: "25"
+
+---
+# Secret for OpenAI API Key (must be created separately)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openai-secrets
+  namespace: nion-system
+type: Opaque
+data:
+  # This should be base64 encoded: echo -n "your-api-key" | base64
+  api-key: c2stcHJvai1YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhY # PLACEHOLDER: Replace with actual key
+
+---
+# HorizontalPodAutoscaler for Nion
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nion-hpa
+  namespace: nion-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nion-orchestrator
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+# PodDisruptionBudget for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nion-pdb
+  namespace: nion-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: nion
