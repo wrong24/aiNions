@@ -62,7 +62,7 @@ The aiNions Orchestration Engine is a hierarchical AI orchestration system that 
 
 ```powershell
 # Navigate to project directory
-cd c:\Users\jainp\OneDrive\Desktop\aiNions
+cd .
 
 # Create virtual environment
 python -m venv venv
@@ -81,11 +81,13 @@ python test_local.py
 ### Option 2: With FastAPI Server
 
 ```powershell
-# In terminal 1: Start the FastAPI server
+# From project directory with venv activated
 $env:OPENAI_API_KEY = "sk-your-actual-api-key-here"
+
+# Terminal 1: Start the FastAPI server
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-# In terminal 2: Test the API
+# Terminal 2: Test the API
 python test_api.py
 ```
 
@@ -93,7 +95,7 @@ python test_api.py
 
 ```powershell
 # Navigate to project directory
-cd c:\Users\jainp\OneDrive\Desktop\aiNions
+cd .
 
 # Create .env file with your OpenAI API key
 @"

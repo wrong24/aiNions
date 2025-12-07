@@ -3,7 +3,7 @@
 ## Project Location
 
 ```
-c:\Users\jainp\OneDrive\Desktop\aiNions
+.
 ```
 
 ## Directory Structure

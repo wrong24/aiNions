@@ -52,7 +52,7 @@ Use this for quick validation without running a server.
 
 ```powershell
 # 1. Navigate to project directory
-cd c:\Users\jainp\OneDrive\Desktop\aiNions
+cd .
 
 # 2. Create virtual environment
 python -m venv venv
@@ -102,7 +102,7 @@ Run the system as a REST API server for endpoint testing and integration.
 **Terminal 1: Start Server**
 
 ```powershell
-cd c:\Users\jainp\OneDrive\Desktop\aiNions
+cd .
 .\venv\Scripts\activate
 $env:OPENAI_API_KEY = "sk-your-actual-api-key-here"
 
@@ -183,7 +183,7 @@ Deploy with Redis cache in containerized environment.
 
 ```powershell
 # 1. Navigate to project
-cd c:\Users\jainp\OneDrive\Desktop\aiNions
+cd .
 
 # 2. Create .env file
 @"
@@ -262,7 +262,7 @@ Deploy to Kubernetes cluster for production-scale testing.
 
 ```powershell
 # 1. Navigate to project
-cd c:\Users\jainp\OneDrive\Desktop\aiNions
+cd .
 
 # 2. Create namespace and secret
 kubectl create namespace nion-system

@@ -52,7 +52,7 @@ The aiNions Orchestration Engine is a production-ready AI orchestration system t
 
 ```powershell
 # Navigate to project
-cd c:\Users\jainp\OneDrive\Desktop\aiNions
+cd .
 
 # Create and activate virtual environment
 python -m venv venv
@@ -84,7 +84,7 @@ python test_api.py
 ### Option 3: Using Docker Compose
 
 ```powershell
-cd c:\Users\jainp\OneDrive\Desktop\aiNions
+cd .
 
 # Create .env file
 @"
