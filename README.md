@@ -5,15 +5,15 @@
 The Nion Orchestration Engine is a hierarchical AI orchestration system built with:
 
 - **LangGraph**: Stateful graph orchestration with LLM agents
-- **LangChain + OpenAI**: LLM interface for L1 planning and L3 extraction
+- **LangChain + Google Gemini**: LLM interface for L1 planning and L3 extraction (free tier)
 - **FastAPI**: REST API for message processing
 - **Redis**: Distributed caching for knowledge retrieval
-- **Kubernetes**: Container orchestration and scaling
+- **Docker**: Containerization with multi-stage builds
 
 ### 3-Layer Architecture
 
 ```
-L1: Orchestrator (gpt-4o)
+L1: Orchestrator (Gemini 2.0 Flash)
     ↓
     Parses message → Creates delegation plan
     ↓
@@ -22,7 +22,7 @@ L2: Domain Coordinators
     ├── L2_Communication (Q&A, reporting)
     └── Cross_Knowledge (knowledge retrieval with caching)
     ↓
-L3: Worker Agents (gpt-3.5-turbo for cost)
+L3: Worker Agents (Gemini 2.0 Flash for efficiency)
     ├── action_item_extractor
     ├── risk_extractor
     └── qna_generator
@@ -32,9 +32,36 @@ L3: Worker Agents (gpt-3.5-turbo for cost)
 
 - Python 3.11+
 - Docker & Docker Compose
-- Kubernetes cluster (or minikube for testing)
-- OpenAI API Key (set `OPENAI_API_KEY` environment variable)
+- Google Gemini API Key (free tier at https://ai.google.dev)
 - Redis (optional - uses in-memory cache if Redis is unavailable)
+
+## Quick Start
+
+### Using Docker Compose (Recommended)
+
+```bash
+# Navigate to project directory
+cd \aiNions
+
+# Create .env file with your Gemini API key
+echo "GOOGLE_API_KEY=your_actual_gemini_api_key_here" > .env
+
+# Build and run containers
+docker-compose build --no-cache
+docker-compose up -d
+
+# Check health
+curl http://localhost:8000/health
+
+# Process a message
+curl -X POST http://localhost:8000/process/nion-map \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "The customer demo went great!",
+    "sender": "Sarah Chen",
+    "project_id": "PRJ-ALPHA"
+  }'
+```
 
 ## Local Development
 
@@ -56,26 +83,13 @@ pip install -r requirements.txt
 
 ```bash
 # PowerShell
-$env:OPENAI_API_KEY = "sk-your-api-key-here"
+$env:GOOGLE_API_KEY = "your_actual_gemini_api_key_here"
 
 # Or create .env file in project root
-echo "OPENAI_API_KEY=sk-your-api-key-here" > .env
+echo "GOOGLE_API_KEY=your_actual_gemini_api_key_here" > .env
 ```
 
-### 3. Run Local Test (Without Server)
-
-```bash
-python test_local.py
-```
-
-This will:
-
-- Initialize the LangGraph
-- Process the test message through all layers
-- Generate the NION ORCHESTRATION MAP
-- Save results to `orchestration_result.json`
-
-### 4. Run FastAPI Server
+### 3. Run FastAPI Server
 
 ```bash
 # Start Redis (if available) in background
@@ -85,7 +99,7 @@ redis-server
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 5. Test API Endpoints
+### 4. Test API Endpoints
 
 ```bash
 # In another terminal
@@ -94,20 +108,13 @@ python test_api.py
 
 Or manually:
 
+### 4. Test API Endpoints
+
 ```bash
 # Health check
 curl http://localhost:8000/health
 
-# Process message (JSON response)
-curl -X POST http://localhost:8000/process \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "The customer demo went great!",
-    "sender": "Sarah Chen",
-    "project_id": "PRJ-ALPHA"
-  }'
-
-# Get NION MAP (plaintext)
+# Process message (returns NION Orchestration Map in plaintext)
 curl -X POST http://localhost:8000/process/nion-map \
   -H "Content-Type: application/json" \
   -d '{
@@ -116,8 +123,8 @@ curl -X POST http://localhost:8000/process/nion-map \
     "project_id": "PRJ-ALPHA"
   }'
 
-# Get detailed JSON
-curl -X POST http://localhost:8000/process/json \
+# Get simple JSON response
+curl -X POST http://localhost:8000/process \
   -H "Content-Type: application/json" \
   -d '{
     "message": "The customer demo went great!",
@@ -128,120 +135,72 @@ curl -X POST http://localhost:8000/process/json \
 
 ## Docker Deployment
 
-### Build Docker Image
+### Build and Run with Docker Compose
+
+```bash
+# Build containers
+docker-compose build --no-cache
+
+# Start services (Redis + FastAPI)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f nion-orchestrator
+
+# Stop services
+docker-compose down
+```
+
+### Environment Variables in Docker
+
+Create a `.env` file in the project root:
+
+```bash
+GOOGLE_API_KEY=your_actual_gemini_api_key_here
+```
+
+This will be automatically loaded by docker-compose.
+
+### Build Docker Image Only
 
 ```bash
 docker build -t nion-orchestrator:latest .
-```
 
-### Run Container
-
-```bash
-# Set API key
-set OPENAI_API_KEY=sk-your-api-key-here
-
-# Run with Redis
-docker run -e OPENAI_API_KEY=%OPENAI_API_KEY% \
+# Run container
+docker run -e GOOGLE_API_KEY=your_key \
   -p 8000:8000 \
   --name nion-app \
   nion-orchestrator:latest
-
-# Or with Docker Compose
-docker-compose up
 ```
 
-Create `docker-compose.yml`:
+## Implementation Details
 
-```yaml
-version: "3.8"
+### Simple Orchestration Mode
 
-services:
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+The system uses a simplified orchestration approach that bypasses complex LangGraph state machinery:
 
-  nion:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-```
+1. **L1_Orchestrator**: Analyzes message and creates task plan
+2. **L2_Tracking**: Extracts action items, risks, and decisions
+3. **L2_Communication**: Generates Q&A records
+4. **Cross_Knowledge**: Retrieves knowledge context from Redis cache
+5. **Evaluator**: Assesses execution results
 
-## Kubernetes Deployment
+This sequential execution model provides better reliability and easier debugging compared to state machine approaches.
 
-### Prerequisites
+### Gemini API Integration
 
-```bash
-# Create namespace
-kubectl create namespace nion-system
+- Uses `ChatGoogleGenerativeAI` from `langchain-google-genai`
+- Configured with `convert_system_message_to_human=True` for compatibility
+- Model: `gemini-2.0-flash` (fast and efficient)
+- Free tier quota limits: ~60 requests/minute per user
 
-# Set OpenAI API Key
-$env:OPENAI_API_KEY = "sk-your-api-key-here"
-$encodedKey = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($env:OPENAI_API_KEY))
-Write-Host $encodedKey  # Copy this value
-```
+### API Endpoints
 
-### Update Secret in k8s-deployment.yaml
-
-Replace the placeholder in the `openai-secrets` Secret:
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: openai-secrets
-  namespace: nion-system
-type: Opaque
-data:
-  api-key: <BASE64_ENCODED_KEY> # Replace with your encoded key
-```
-
-### Deploy to Kubernetes
-
-```bash
-# Load image into minikube (if using minikube)
-minikube image load nion-orchestrator:latest
-
-# Apply deployment
-kubectl apply -f k8s-deployment.yaml
-
-# Verify deployment
-kubectl get pods -n nion-system
-kubectl get svc -n nion-system
-
-# Check logs
-kubectl logs -n nion-system -l app=nion -f
-
-# Port forward for testing
-kubectl port-forward -n nion-system svc/nion-service 8000:80
-```
-
-### Scale Deployment
-
-```bash
-# Manually scale
-kubectl scale deployment nion-orchestrator -n nion-system --replicas=3
-
-# Or let HPA auto-scale based on CPU/Memory
-kubectl get hpa -n nion-system
-```
+| Endpoint            | Method | Description                      | Response   |
+| ------------------- | ------ | -------------------------------- | ---------- |
+| `/health`           | GET    | Service health check             | JSON       |
+| `/process`          | POST   | Process message, return stats    | JSON       |
+| `/process/nion-map` | POST   | Process message, return NION map | Plain Text |
 
 ## File Structure
 
@@ -249,20 +208,40 @@ kubectl get hpa -n nion-system
 \aiNions\
 ├── app/
 │   ├── __init__.py
-│   ├── main.py                 # FastAPI application
-│   ├── schemas.py              # Pydantic models
-│   ├── agents.py               # L3 workers + Cross-cutting agents
-│   ├── graph.py                # LangGraph orchestration
-│   └── formatter.py            # Output formatting
-├── requirements.txt            # Python dependencies
+│   ├── main.py                 # FastAPI application with endpoints
+│   ├── schemas.py              # Pydantic models and data structures
+│   ├── agents.py               # L3 workers + Cross-cutting agents (Gemini integration)
+│   ├── graph.py                # LangGraph + simple orchestration
+│   └── formatter.py            # NION output formatting
+├── requirements.txt            # Python dependencies (Gemini, LangGraph, FastAPI, etc.)
 ├── Dockerfile                  # Multi-stage Docker build
-├── docker-compose.yml          # Docker Compose (create if needed)
-├── k8s-deployment.yaml         # Kubernetes manifests
+├── docker-compose.yml          # Docker Compose configuration (Redis + FastAPI)
+├── .gitignore                  # Git ignore file (excludes .env and secrets)
 ├── test_local.py               # Local testing script
 ├── test_api.py                 # API testing script
+├── .env                        # Environment variables (GOOGLE_API_KEY) - NOT TRACKED
+├── .env.template               # Template for .env file
 ├── README.md                   # This file
-└── orchestration_result.json   # Sample output (generated)
+└── logs/                       # Application logs directory
 ```
+
+## Dependencies
+
+```
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+langchain==0.1.20
+langchain-google-genai==0.0.11
+langgraph==0.0.50
+redis==5.0.1
+```
+
+Key changes from OpenAI version:
+
+- Replaced `langchain-openai` with `langchain-google-genai`
+- Uses Gemini 2.0 Flash model instead of GPT-4o
+- Simplified orchestration bypasses complex LangGraph state machinery
 
 ## NION Orchestration Map Format
 
@@ -312,81 +291,245 @@ MESSAGE METADATA
 
 ## Environment Variables
 
-| Variable       | Default   | Description                   |
-| -------------- | --------- | ----------------------------- |
-| OPENAI_API_KEY | Required  | OpenAI API key for LLM access |
-| REDIS_HOST     | localhost | Redis server hostname         |
-| REDIS_PORT     | 6379      | Redis server port             |
-| HOST           | 0.0.0.0   | FastAPI host binding          |
-| PORT           | 8000      | FastAPI port                  |
+| Variable       | Required | Default   | Description                                            |
+| -------------- | -------- | --------- | ------------------------------------------------------ |
+| GOOGLE_API_KEY | Yes      | -         | Google Gemini API key (get from https://ai.google.dev) |
+| REDIS_HOST     | No       | localhost | Redis server hostname                                  |
+| REDIS_PORT     | No       | 6379      | Redis server port                                      |
+
+### Getting a Gemini API Key
+
+1. Go to https://ai.google.dev
+2. Click "Get API Key"
+3. Create a new API key (free tier available)
+4. Set as environment variable: `GOOGLE_API_KEY=your_key_here`
+
+### Free Tier Limits
+
+- 60 requests per minute per user
+- 1 request per second per IP
+- Monthly quota resets
+
+If you exceed the quota, the system will retry automatically after the rate limit window.
 
 ## Troubleshooting
 
 ### Redis Connection Error
 
-The system gracefully falls back to in-memory caching if Redis is unavailable.
+The system gracefully falls back to in-memory caching if Redis is unavailable. This is expected behavior in development.
 
-### OpenAI API Errors
+### Gemini API Rate Limiting (429 Error)
+
+If you see "429 You exceeded your current quota":
+
+- **Free tier limit**: 60 requests/minute
+- **Resolution**: Wait for the retry delay (typically 30-60 seconds) or upgrade to a paid plan
+- The system will automatically retry after the specified delay
+
+### Gemini API Errors
 
 Check that:
 
-- `OPENAI_API_KEY` is correctly set
-- API key has sufficient quota
-- Network connectivity to OpenAI API
+- `GOOGLE_API_KEY` is correctly set: `echo $env:GOOGLE_API_KEY` (PowerShell)
+- API key is valid and hasn't been revoked
+- Network connectivity to Google APIs
+- Sufficient quota available (monitor at https://ai.dev/usage)
 
-### LangGraph Issues
+### LangGraph/State Issues
 
-Enable debug logging:
+If you encounter LangGraph state errors:
 
-```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
-```
+- The system automatically falls back to simple orchestration mode
+- This bypasses the state machine and executes nodes sequentially
+- All functionality is preserved with better reliability
 
-### Kubernetes Pod Issues
+### Docker Container Won't Start
 
 ```bash
-# Check pod status
-kubectl describe pod nion-orchestrator-xxx -n nion-system
+# Check logs
+docker-compose logs nion-orchestrator
 
-# View logs
-kubectl logs pod nion-orchestrator-xxx -n nion-system
+# Common issues:
+# 1. Missing .env file with GOOGLE_API_KEY
+# 2. Port 8000 already in use
+# 3. Docker daemon not running
 
-# Exec into pod
-kubectl exec -it nion-orchestrator-xxx -n nion-system -- /bin/bash
+# Solution: Create .env file
+echo "GOOGLE_API_KEY=your_key_here" > .env
+
+# Then rebuild
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+### Health Check Failing
+
+```bash
+# Verify endpoint is responding
+curl http://localhost:8000/health
+
+# If failing, check logs:
+docker logs nion-orchestrator
+
+# Common causes:
+# 1. GOOGLE_API_KEY not set
+# 2. Gemini API quota exceeded
+# 3. Network connectivity issues
 ```
 
 ## Performance Considerations
 
-- **L1 (Orchestrator)**: Uses gpt-4o for planning (~2-5s)
-- **L3 Workers**: Use gpt-3.5-turbo for cost efficiency
+- **L1 (Orchestrator)**: Gemini 2.0 Flash (~1-3s with rate limiting)
+- **L2 Tracking**: Extracts action items, risks, decisions
+- **L2 Communication**: Generates Q&A records
+- **L3 Workers**: Use Gemini for cost efficiency
 - **Redis Caching**: Knowledge retrieval cached for 60 seconds
-- **Auto-scaling**: HPA configured to scale 2-5 replicas based on CPU/Memory
+- **Sequential Execution**: Simple orchestration mode executes tasks sequentially for better reliability
+
+### Optimization Tips
+
+1. **Cache Warmer**: Pre-populate Redis with common project contexts
+2. **Batch Processing**: Send multiple messages in parallel requests
+3. **Timeout Tuning**: Adjust Gemini API timeout based on your network
+4. **Rate Limit Management**: Upgrade to paid Gemini tier for higher limits
+
+## Architecture Benefits
+
+### Simple Orchestration Mode
+
+- ✅ **Reliable**: No complex state machine issues
+- ✅ **Debuggable**: Linear execution flow easy to trace
+- ✅ **Fast**: Sequential execution with no network overhead
+- ✅ **Scalable**: Can be parallelized with multiple containers
+- ✅ **Flexible**: Easy to add/modify orchestration steps
+
+### Gemini API Integration
+
+- ✅ **Free Tier**: Available at https://ai.google.dev
+- ✅ **Fast Model**: Gemini 2.0 Flash optimized for speed
+- ✅ **Well Integrated**: LangChain support via langchain-google-genai
+- ✅ **Cost Effective**: 0 cost for development/testing
 
 ## Security
 
-- API Key injected via Kubernetes Secrets
+- API Keys stored only in `.env` file (excluded via .gitignore)
 - No credentials in code or Docker images
-- Service Account with minimal RBAC
-- Network policies should be configured per environment
+- Environment variables injected at runtime
+- Support for Kubernetes Secrets for production deployment
 
 ## Monitoring & Logging
 
 All components log to stdout/stderr:
 
 ```bash
-# View real-time logs
-kubectl logs -n nion-system -l app=nion -f --all-containers=true
+# View logs in Docker
+docker-compose logs -f nion-orchestrator
 
-# Aggregate logs (requires logging stack like ELK)
-# See Kubernetes logging documentation
+# View specific log entries
+docker-compose logs nion-orchestrator | grep "\[L1\]"
+docker-compose logs nion-orchestrator | grep "ERROR"
 ```
 
-## Support
+### Log Levels
 
-For issues or questions, please check:
+- `INFO`: Standard operational messages (L1 execution, API requests)
+- `WARNING`: Rate limiting, fallback operations
+- `ERROR`: API errors, orchestration failures
+- `DEBUG`: Detailed LLM interactions (enable in development)
 
-1. Logs with `kubectl logs` or local terminal
-2. Health endpoint: `curl http://localhost:8000/health`
-3. Verify environment variables are set
-4. Check OpenAI API quota and status
+## API Request/Response Examples
+
+### Health Check
+
+```bash
+curl http://localhost:8000/health
+```
+
+Response:
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-12-07T07:07:15.822255",
+  "service": "Nion Orchestration Engine"
+}
+```
+
+### Process Message - JSON Response
+
+```bash
+curl -X POST http://localhost:8000/process \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Customer demo went great!",
+    "sender": "Sarah Chen",
+    "project_id": "PRJ-ALPHA"
+  }'
+```
+
+Response:
+
+```json
+{
+  "state_id": "abc123-def456",
+  "status": "COMPLETED",
+  "message": "Orchestration completed successfully",
+  "execution_time_ms": 2345.67,
+  "execution_results_count": 5
+}
+```
+
+### Process Message - NION Map (Plaintext)
+
+```bash
+curl -X POST http://localhost:8000/process/nion-map \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Customer demo went great!",
+    "sender": "Sarah Chen",
+    "project_id": "PRJ-ALPHA"
+  }'
+```
+
+Returns formatted orchestration map (see NION Orchestration Map Format section above)
+
+## Deployment Checklist
+
+- [ ] Python 3.11+ installed
+- [ ] Docker and Docker Compose installed
+- [ ] Google Gemini API key obtained
+- [ ] `.env` file created with `GOOGLE_API_KEY`
+- [ ] Docker image builds successfully
+- [ ] Redis container starts
+- [ ] FastAPI health endpoint responds
+- [ ] Sample API request processed successfully
+- [ ] Logs show L1 orchestrator executing
+- [ ] Changes committed and pushed to git
+
+## Support & Issues
+
+For issues or questions:
+
+1. Check the troubleshooting section above
+2. Review logs: `docker-compose logs -f`
+3. Verify `.env` file has correct `GOOGLE_API_KEY`
+4. Test health endpoint: `curl http://localhost:8000/health`
+5. Check Gemini API status: https://status.cloud.google.com/
+
+## Recent Changes (v1.1)
+
+- ✅ Migrated from OpenAI to Google Gemini API
+- ✅ Implemented simple orchestration (bypasses complex LangGraph state)
+- ✅ Fixed state management issues with LangGraph 0.0.50
+- ✅ Added `convert_system_message_to_human=True` for Gemini compatibility
+- ✅ Implemented rate limit retry logic
+- ✅ Added Docker Compose orchestration
+- ✅ Improved logging and debugging
+
+## License
+
+[Add your license here]
+
+## Contributing
+
+[Add contribution guidelines here]
