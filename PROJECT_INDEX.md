@@ -1,489 +1,630 @@
-╔════════════════════════════════════════════════════════════════════════════════╗
-║ NION ORCHESTRATION ENGINE - PROJECT INDEX ║
-║ Complete File Guide ║
-╚════════════════════════════════════════════════════════════════════════════════╝
+# aiNions Project Index - Complete File Guide
 
-PROJECT LOCATION
-════════════════════════════════════════════════════════════════════════════════
+## Project Location
+
+```
 c:\Users\jainp\OneDrive\Desktop\aiNions
+```
 
-DIRECTORY STRUCTURE
-════════════════════════════════════════════════════════════════════════════════
+## Directory Structure
 
-📦 aiNions/
+```
+aiNions/
+├── app/                          # Core application (2,050+ LOC)
+│   ├── __init__.py              # Package initialization
+│   ├── main.py                  # FastAPI REST API server
+│   ├── graph.py                 # LangGraph orchestration engine
+│   ├── agents.py                # L3 worker agents + caching
+│   ├── schemas.py               # Pydantic data models
+│   └── formatter.py             # Output formatting logic
 │
-├── 📁 app/ Core Application
-│ ├── **init**.py Package initialization
-│ ├── schemas.py [Pydantic Models - 650 LOC]
-│ ├── agents.py [L3 Workers + Caching - 450 LOC]
-│ ├── graph.py [LangGraph Orchestration - 380 LOC]
-│ ├── formatter.py [Output Formatting - 250 LOC]
-│ └── main.py [FastAPI Server - 320 LOC]
+├── test_local.py                # Local integration test
+├── test_api.py                  # API endpoint tests
+├── setup.py                     # Interactive setup wizard
 │
-├── 📄 requirements.txt Python Dependencies (7 packages)
-├── 📄 Dockerfile Multi-stage Docker build
-├── 📄 docker-compose.yml Docker Compose (dev/test)
-├── 📄 k8s-deployment.yaml Kubernetes manifests (production)
+├── requirements.txt             # Python dependencies
+├── Dockerfile                   # Docker image definition
+├── docker-compose.yml           # Docker Compose configuration
+├── k8s-deployment.yaml          # Kubernetes manifests
+├── .env.template                # Environment variables template
 │
-├── 🧪 test_local.py Local integration test
-├── 🧪 test_api.py API endpoint tests
-├── 🔧 setup.py Interactive setup wizard
+├── README.md                    # Setup & deployment guide
+├── START_HERE.md                # Quick start guide
+├── EXECUTION_GUIDE.md           # Step-by-step execution
+├── API_EXAMPLES.md              # API reference with examples
+├── IMPLEMENTATION_SUMMARY.md    # Technical architecture
+├── PROJECT_INDEX.md             # This file
 │
-├── 📚 DOCUMENTATION:
-│ ├── README.md [Setup & Deployment Guide]
-│ ├── API_EXAMPLES.md [API Reference with Examples]
-│ ├── EXECUTION_GUIDE.md [Step-by-Step Execution]
-│ ├── IMPLEMENTATION_SUMMARY.md [Technical Details]
-│ ├── DELIVERY_SUMMARY.txt [Project Status]
-│ ├── PROJECT_INDEX.md [This File]
-│ └── .env.template [Environment Configuration]
-│
-└── 📋 Git Repository
-└── .git/ Version control history
+└── logs/                        # Application logs directory
+    └── (log files created at runtime)
+```
 
-FILE DESCRIPTIONS & PURPOSE
-════════════════════════════════════════════════════════════════════════════════
+## Core Application Files
 
-APPLICATION CODE
-────────────────────────────────────────────────────────────────────────────────
+### app/main.py (320 LOC)
 
-app/schemas.py [MODELS & VALIDATION]
-Purpose: Pydantic models for type-safe data structures
-Key Classes:
-• OrchestrationState - Complete state object flowing through graph
-• InputMessage - User message input
-• Task - Execution task
-• ActionItem, Risk, Decision - L3 extraction outputs
-• L2TrackingOutput - Tracking domain results
-• L2CommunicationOutput - Communication domain results
-• ExecutionResult - Execution metadata
-• CrossCuttingOutput - Knowledge & evaluation
-When to Use: Reference for all data structures
-To Modify: Add new model fields or output types
+**Purpose**: FastAPI REST API server
 
-app/agents.py [LLM INTELLIGENCE & CACHING]
-Purpose: L3 worker agents and cross-cutting agents
-Key Classes:
-• L3Agents - extract_action_items() - Uses gpt-3.5-turbo - extract_risks() - Uses gpt-3.5-turbo - generate_qna() - Uses gpt-3.5-turbo
-• CrossCuttingAgents - retrieve_knowledge() - Redis-backed with fallback - evaluate_output() - Quality assessment
-Key Functions:
-• @cache_result - Transparent caching decorator
-• get_redis_client() - Redis connection with fallback
-When to Use: Add new L3 workers or modify LLM prompts
-To Modify: Update system prompts, add extractors, change models
+**Key Components**:
 
-app/graph.py [ORCHESTRATION ENGINE]
-Purpose: LangGraph state graph with hierarchical routing
-Key Classes:
-• NionGraph - \_build_graph() - Constructs StateGraph - \_node_l1_orchestrator - Strategic planning (gpt-4o) - \_node_l2_tracking - Tracking domain execution - \_node_l2_communication - Communication domain execution - \_node_cross_knowledge - Knowledge retrieval - \_node_evaluator - Quality assessment - \_router_l1_to_l2 - Conditional routing - invoke() - Synchronous execution - ainvoke() - Asynchronous execution
-When to Use: Understand orchestration flow
-To Modify: Add new L2 domains, change routing logic
+- Application initialization with lifespan management
+- Health check endpoint (`/health`)
+- Message processing endpoints (`/process`, `/process/nion-map`, `/process/json`)
+- Input validation using Pydantic models
+- Error handling and HTTP exception management
+- CORS configuration
+- Request logging
 
-app/formatter.py [OUTPUT FORMATTING]
-Purpose: Convert OrchestrationState to human/machine-readable formats
-Key Functions:
-• generate_nion_map() - Plaintext NION ORCHESTRATION MAP
-• generate_json_output() - Hierarchical JSON output
-Sections Generated:
-• Message Metadata
-• L1 PLAN (tasks with priorities)
-• L2/L3 EXECUTION (results from all workers)
-• EXECUTION SUMMARY (success metrics)
-• EXECUTION LOGS (audit trail)
-When to Use: Generate reports and outputs
-To Modify: Change output format, add sections
+**Key Functions**:
 
-app/main.py [REST API SERVER]
-Purpose: FastAPI server with endpoints
-Key Endpoints:
-• GET / - Documentation
-• GET /health - Health check
-• POST /process - Standard response
-• POST /process/nion-map - NION MAP output
-• POST /process/json - Detailed JSON output
-Key Functions:
-• lifespan() - Startup/shutdown lifecycle
-• get_graph() - Graph initialization
-• process_message() - Main orchestration endpoint
-When to Use: API integration, endpoint testing
-To Modify: Add endpoints, change response formats
+- `get_graph()` - Lazy initialization of NionGraph
+- `lifespan()` - Application startup/shutdown lifecycle
+- `process_message()` - Main message processing endpoint
+- `health_check()` - Service health verification
 
-TESTING
-────────────────────────────────────────────────────────────────────────────────
+**When to Modify**:
 
-test_local.py [LOCAL INTEGRATION TEST]
-Purpose: Test orchestration without FastAPI
-What It Does: 1. Initializes LangGraph 2. Processes test message through all layers 3. Generates NION MAP 4. Saves result to JSON
-Run With: python test_local.py
-Expected Output: NION ORCHESTRATION MAP + orchestration_result.json
-When to Use: Quick validation without server
+- Add new endpoints
+- Change response formats
+- Modify timeout values
+- Add authentication/authorization
+- Update CORS settings
 
-test_api.py [API ENDPOINT TESTS]
-Purpose: Test all FastAPI endpoints
-Tests: 1. Health check 2. /process endpoint 3. /process/nion-map endpoint 4. /process/json endpoint
-Run With: python test_api.py
-Requires: FastAPI server running on localhost:8000
-When to Use: Validate API after deployment
+**Dependencies**: FastAPI, Uvicorn, Pydantic, LangChain
 
-setup.py [INTERACTIVE SETUP WIZARD]
-Purpose: Automated environment setup
-Steps: 1. Python version check (3.11+) 2. Dependency verification 3. Virtual environment creation 4. Environment configuration 5. Optional test execution 6. Optional server startup
-Run With: python setup.py
-When to Use: First-time setup
+### app/graph.py (380 LOC)
 
-DEPLOYMENT
-────────────────────────────────────────────────────────────────────────────────
+**Purpose**: LangGraph orchestration engine with state management
 
-Dockerfile [DOCKER CONTAINERIZATION]
-Purpose: Multi-stage Docker build
-Stages: 1. Base: Python 3.11-slim 2. Builder: Install dependencies 3. Final: Minimal runtime image (~400MB)
-Features:
-• Health check included
-• Non-root user (security)
-• Logging configured
-• Port 8000 exposed
-Build With: docker build -t nion-orchestrator:latest .
-Use Cases: Development, testing, registry push
+**Key Classes**:
 
-docker-compose.yml [LOCAL DOCKER COMPOSE]
-Purpose: Local dev/test stack with Redis + App
-Services:
-• redis - Cache service (Alpine)
-• nion-app - Application server
-Features:
-• Health checks for both services
-• Named volumes for persistence
-• Service discovery via DNS
-• Logging configuration
-• Network isolation
-Run With: docker-compose up --build
-Use Cases: Local testing, development
+- `NionGraph` - Main orchestration engine
 
-k8s-deployment.yaml [KUBERNETES MANIFESTS]
-Purpose: Production-ready K8s deployment
-Resources:
-• Namespace: nion-system
-• Redis Deployment (1 replica)
-• Redis Service (ClusterIP)
-• Nion Deployment (2 replicas, rolling update)
-• Nion LoadBalancer Service
-• Nion NodePort Service
-• ServiceAccount & RBAC
-• ConfigMap for configuration
-• Secret for API keys
-• HorizontalPodAutoscaler (2-5 replicas)
-• PodDisruptionBudget (HA)
-Deploy With: kubectl apply -f k8s-deployment.yaml
-Use Cases: Production deployment
+**Key Methods**:
 
-CONFIGURATION & SETUP
-────────────────────────────────────────────────────────────────────────────────
+- `_build_graph()` - Constructs StateGraph with conditional routing
+- `_node_l1_orchestrator()` - L1 strategic planning (GPT-4o)
+- `_node_l2_tracking()` - L2 tracking domain coordination
+- `_node_l2_communication()` - L2 communication domain coordination
+- `_node_cross_knowledge()` - Cross-cutting knowledge retrieval
+- `_node_evaluator()` - Quality assessment and evaluation
+- `_router_l1_to_l2()` - Conditional routing based on L1 plan
+- `invoke()` - Synchronous graph execution
+- `ainvoke()` - Asynchronous graph execution
 
-requirements.txt [PYTHON DEPENDENCIES]
-Content:
-• fastapi==0.104.1 - REST framework
-• uvicorn==0.24.0 - ASGI server
-• pydantic==2.5.0 - Data validation
-• langchain==0.1.10 - LLM framework
-• langchain-openai==0.0.8 - OpenAI integration
-• langgraph==0.0.40 - Graph orchestration
-• redis==5.0.1 - Redis client
-Install With: pip install -r requirements.txt
+**Graph Flow**:
 
-.env.template [ENVIRONMENT VARIABLES]
-Template for configuration
-Variables:
-• OPENAI_API_KEY (Required) - OpenAI API key
-• REDIS_HOST (Optional) - Redis hostname
-• REDIS_PORT (Optional) - Redis port
-• HOST (Optional) - FastAPI host
-• PORT (Optional) - FastAPI port
-• ENVIRONMENT (Optional) - dev/staging/prod
-Setup With: Copy to .env and populate
+1. Input → L1 Orchestrator (creates plan)
+2. Router → Selects L2 domains based on L1 plan
+3. Parallel execution → L2 Tracking, L2 Communication, Cross-Knowledge
+4. L3 Workers → Called from L2 coordinators (isolated from L1)
+5. Evaluator → Quality assessment
+6. Formatter → Output generation
 
-DOCUMENTATION
-────────────────────────────────────────────────────────────────────────────────
+**When to Modify**:
 
-README.md [MAIN DOCUMENTATION]
-Sections:
-• Architecture overview
-• Prerequisites
-• Local development setup
-• Docker deployment
-• Kubernetes deployment
-• API usage examples
-• Environment variables
-• Troubleshooting
-• Performance info
-• Security considerations
-When to Read: First comprehensive guide
+- Add new L2 coordinator nodes
+- Change routing logic
+- Modify LLM models for L1
+- Add new cross-cutting concerns
+- Change execution order
 
-API_EXAMPLES.md [API REFERENCE]
-Content:
-• All 4 endpoints documented
-• Request/response examples
-• CURL commands
-• JSON response examples
-• Error responses
-• Performance metrics
-• Multi-project examples
-• Integration examples
-• Batch processing
-When to Read: API integration work
+**Architecture Constraint**: L1 cannot directly access or call L3 agents (enforced in code)
 
-EXECUTION_GUIDE.md [STEP-BY-STEP EXECUTION]
-Sections:
-• Pre-flight checklist
-• Quickest start (60 seconds)
-• Detailed Python setup
-• Docker execution
-• Kubernetes deployment
-• Automated setup
-• Expected outputs
-• Troubleshooting
-• Validation checklist
-When to Read: Running the system
+**Dependencies**: LangGraph, LangChain
 
-IMPLEMENTATION_SUMMARY.md [TECHNICAL DETAILS]
-Sections:
-• Complete file structure
-• Architecture layers
-• LLM configuration
-• Caching strategy
-• Scalability info
-• Sample outputs
-• Production checklist
-When to Read: Understanding internals
+### app/agents.py (450 LOC)
 
-DELIVERY_SUMMARY.txt [PROJECT STATUS]
-Content:
-• Deliverables checklist
-• Requirements verification
-• Architecture overview
-• Quick start commands
-• File manifest
-• Key features
-• Performance metrics
-• Deployment options
-When to Read: Project overview
+**Purpose**: L3 worker agents and cross-cutting concerns with caching
 
-PROJECT_INDEX.md [THIS FILE]
-Content:
-• Complete file guide
-• File descriptions
-• Usage guide
-• Quick reference
+**Key Classes**:
 
-USAGE FLOW
-════════════════════════════════════════════════════════════════════════════════
+- `L3Agents` - Worker agents for semantic extraction
+- `CrossCuttingAgents` - Knowledge retrieval and evaluation
+- `LLMConfig` - LLM model configuration
 
-For Quick Testing:
+**L3 Agent Methods** (Called from L2 only):
 
-1. Read: EXECUTION_GUIDE.md (Quick Start section)
-2. Run: python test_local.py
-3. View: orchestration_result.json
+- `extract_action_items(context: str) -> List[ActionItem]`
+- `extract_risks(context: str) -> List[Risk]`
+- `generate_qna(context: str) -> List[QnAPair]`
 
-For API Development:
+**Cross-Cutting Methods**:
 
-1. Read: API_EXAMPLES.md
-2. Start: FastAPI server (EXECUTION_GUIDE.md)
-3. Test: test_api.py
+- `retrieve_knowledge(project_id: str, context: str) -> Dict`
+- `evaluate_output(results: Dict) -> Dict`
 
-For Docker/K8s Deployment:
+**Caching Infrastructure**:
 
-1. Read: README.md (Deployment sections)
-2. Build: docker build -t nion-orchestrator:latest .
-3. Deploy: docker-compose up or kubectl apply -f k8s-deployment.yaml
+- `@cache_result` decorator - Transparent caching with TTL
+- `get_redis_client()` - Redis connection with fallback
+- In-memory fallback cache with mock data
+- 60-second TTL for Redis entries
 
-For Understanding Architecture:
+**LLM Configuration**:
 
-1. Read: IMPLEMENTATION_SUMMARY.md
-2. Review: app/graph.py
-3. Study: app/agents.py
+- L1: GPT-4o (2000 tokens, temperature 0.7)
+- L3: GPT-3.5-turbo (1500 tokens, temperature 0.5)
+- Retry logic with exponential backoff
+- Timeout management (30 seconds default)
 
-For Production Checklist:
+**When to Modify**:
 
-1. Review: DELIVERY_SUMMARY.txt
-2. Check: k8s-deployment.yaml
-3. Validate: All tests passing
+- Add new L3 worker agents
+- Change LLM models or parameters
+- Modify system prompts
+- Update extraction logic
+- Change caching strategy
+- Extend knowledge base
 
-QUICK REFERENCE
-════════════════════════════════════════════════════════════════════════════════
+**Dependencies**: LangChain, Redis, Pydantic
 
-To Run Locally:
+### app/schemas.py (650 LOC)
+
+**Purpose**: Pydantic data models for validation and type safety
+
+**Core Models**:
+
+- `InputMessage` - User message input validation
+- `Task` - Execution task definition
+- `ActionItem` - Action item from extraction
+- `Risk` - Risk from extraction
+- `Decision` - Decision from extraction
+- `QnAPair` - Question-answer pair
+- `L2TrackingOutput` - Tracking domain results
+- `L2CommunicationOutput` - Communication domain results
+- `ExecutionResult` - Execution metadata
+- `CrossCuttingOutput` - Knowledge and evaluation results
+- `OrchestrationState` - Complete state object flowing through graph
+
+**Validation Features**:
+
+- Field type checking
+- Optional fields with defaults
+- Enums for constrained values
+- Custom validators where needed
+- JSON schema generation
+
+**When to Modify**:
+
+- Add new extraction output types
+- Change field validation rules
+- Add new model fields
+- Modify response structures
+- Extend state object
+
+**Dependencies**: Pydantic
+
+### app/formatter.py (250 LOC)
+
+**Purpose**: Convert OrchestrationState to human and machine-readable formats
+
+**Key Classes**:
+
+- `NionFormatter` - Output formatter
+
+**Key Functions**:
+
+- `generate_nion_map(state: OrchestrationState) -> str` - Plaintext NION Map
+- `generate_json_output(state: OrchestrationState) -> Dict` - JSON output
+- `_format_section()` - Section formatting helper
+- `_format_execution_summary()` - Summary section generation
+
+**Output Formats**:
+
+1. **NION Map (Plaintext)**
+
+   - Message metadata section
+   - L1 plan section
+   - L2/L3 execution results
+   - Execution summary with timing
+   - Professional ASCII formatting
+
+2. **JSON Output**
+   - Hierarchical structure
+   - Complete execution metadata
+   - Detailed timing information
+   - Execution logs
+
+**When to Modify**:
+
+- Change output format or structure
+- Add new output sections
+- Modify plaintext layout
+- Change JSON schema
+- Add new fields to output
+
+**Dependencies**: Pydantic
+
+## Testing Files
+
+### test_local.py
+
+**Purpose**: Local integration test without FastAPI server
+
+**What It Does**:
+
+1. Initializes NionGraph
+2. Creates test message
+3. Processes through all layers (L1→L2→L3→Evaluator)
+4. Generates NION Map output
+5. Saves results to JSON file
+6. Displays formatted output
+
+**Run With**:
+
+```powershell
 python test_local.py
+```
 
-To Start API Server:
-python -m uvicorn app.main:app --port 8000
+**Expected Output**:
 
-To Test API:
+- NION orchestration map
+- orchestration_result.json file
+- Success/error messages
+
+**When to Use**:
+
+- Quick validation without server
+- Testing core logic changes
+- Debugging orchestration flow
+- Initial setup verification
+
+### test_api.py
+
+**Purpose**: Test all FastAPI endpoints
+
+**What It Tests**:
+
+1. Health check endpoint
+2. /process endpoint (JSON)
+3. /process/nion-map endpoint (plaintext)
+4. /process/json endpoint (detailed JSON)
+5. Error handling
+
+**Run With** (requires server running):
+
+```powershell
 python test_api.py
+```
 
-To Build Docker:
+**When to Use**:
+
+- Validate API after deployment
+- Test endpoint integration
+- Verify response formats
+- Check error handling
+
+### setup.py
+
+**Purpose**: Interactive environment setup wizard
+
+**Features**:
+
+1. Python version check (3.11+)
+2. Dependency verification
+3. Virtual environment creation
+4. Environment configuration
+5. Optional test execution
+6. Optional server startup
+
+**Run With**:
+
+```powershell
+python setup.py
+```
+
+## Configuration & Deployment Files
+
+### requirements.txt
+
+**Purpose**: Python package dependencies
+
+**Packages**:
+
+```
+fastapi>=0.115.0         # REST API framework
+uvicorn>=0.32.0          # ASGI server
+pydantic>=2.9.0          # Data validation
+pydantic-settings>=2.6.0 # Settings management
+langchain>=0.3.7         # LLM framework
+langchain-core>=0.3.15   # Core LLM utilities
+langchain-google-genai>=2.0.1  # Gemini integration (if needed)
+langgraph>=0.2.45        # Graph orchestration
+redis>=5.2.0             # Redis client
+python-dotenv>=1.0.1     # .env file support
+```
+
+**Install With**:
+
+```powershell
+pip install -r requirements.txt
+```
+
+### Dockerfile
+
+**Purpose**: Docker image for containerization
+
+**Build Stages**:
+
+1. **Base Stage**: Python 3.11-slim with OS dependencies
+2. **Builder Stage**: Install Python dependencies
+3. **Final Stage**: Minimal runtime image (~400MB)
+
+**Build With**:
+
+```powershell
 docker build -t nion-orchestrator:latest .
+```
 
-To Run Docker Compose:
+**Features**:
+
+- Multi-stage build for optimization
+- Health check included
+- Non-root user (security)
+- Logging configured
+- Port 8000 exposed
+
+### docker-compose.yml
+
+**Purpose**: Local development with Redis + App
+
+**Services**:
+
+- `redis`: Cache service (Alpine image)
+- `nion-app`: Application server
+
+**Features**:
+
+- Health checks for both services
+- Named volumes for persistence
+- Service discovery via DNS
+- Logging configuration
+- Network isolation
+
+**Run With**:
+
+```powershell
 docker-compose up --build
+```
 
-To Deploy to Kubernetes:
+### k8s-deployment.yaml
+
+**Purpose**: Production Kubernetes deployment
+
+**Resources** (11 total):
+
+1. Namespace: nion-system
+2. Redis Deployment (1 replica)
+3. Redis Service (ClusterIP)
+4. Application Deployment (2 replicas)
+5. Application LoadBalancer Service
+6. Application NodePort Service
+7. ServiceAccount
+8. ClusterRole (RBAC)
+9. ClusterRoleBinding (RBAC)
+10. ConfigMap (configuration)
+11. Secret (API key)
+12. HorizontalPodAutoscaler (2-5 replicas)
+13. PodDisruptionBudget (HA)
+
+**Deploy With**:
+
+```powershell
 kubectl apply -f k8s-deployment.yaml
+```
 
-To Check Health:
-curl http://localhost:8000/health
+### .env.template
 
-To Process Message:
-curl -X POST http://localhost:8000/process/nion-map \
- -H "Content-Type: application/json" \
- -d '{"message":"...","sender":"...","project_id":"PRJ-ALPHA"}'
+**Purpose**: Environment variable template
 
-KEY CONCEPTS
-════════════════════════════════════════════════════════════════════════════════
+**Variables**:
 
-L1 Orchestrator:
+- `OPENAI_API_KEY` - OpenAI API key (required)
+- `REDIS_HOST` - Redis hostname
+- `REDIS_PORT` - Redis port
+- `HOST` - FastAPI host
+- `PORT` - FastAPI port
+- `LOG_LEVEL` - Logging level
 
-- Analyzes message intent
-- Creates high-level delegation plan
-- Uses gpt-4o for strategic reasoning
-- Routes ONLY to L2 domains (never L3 directly)
+**Usage**: Copy to `.env` and fill in values
 
-L2 Domain Coordinators:
+## Documentation Files
 
-- L2_Tracking: Action items, risks, decisions
-- L2_Communication: Q&A, reporting
-- Manage L3 worker execution internally
+### README.md
 
-L3 Workers:
+**Content**:
 
-- action_item_extraction: Extracts tasks
-- risk_extraction: Identifies risks
-- qna_generator: Generates Q&A
+- Project overview and architecture
+- Quick start guide (3 options)
+- API endpoints reference
+- Docker deployment instructions
+- Kubernetes deployment overview
+- Implementation details
+- Troubleshooting guide
+- File structure
+- Performance metrics
 
-Cross-Cutting Agents:
+**Length**: ~500 lines
 
-- knowledge_retrieval: Redis-backed, with fallback
-- evaluation: Output quality assessment
+**When to Read**: First-time setup and comprehensive understanding
 
-NION Orchestration Map:
+### START_HERE.md
 
-- Standard plaintext output format
-- Shows hierarchical execution
-- Includes metadata and results
+**Content**:
 
-DEBUGGING TIPS
-════════════════════════════════════════════════════════════════════════════════
+- Quick project overview
+- Key features summary
+- Quick start (3 options)
+- Common tasks
+- Troubleshooting
+- Documentation roadmap
 
-Enable Debug Logging:
-import logging
-logging.basicConfig(level=logging.DEBUG)
+**Length**: ~250 lines
 
-Check Environment:
-print(os.getenv("OPENAI_API_KEY"))
+**When to Read**: Quick overview before diving deeper
 
-Inspect State Object:
-print(result_state.dict())
+### EXECUTION_GUIDE.md
 
-View Execution Results:
-for task_id, result in state.execution_results.items():
-print(f"{task_id}: {result.status}")
+**Content**:
 
-Check Logs:
-print(state.logs)
+- Detailed step-by-step instructions
+- 4 execution options (local, FastAPI, Docker, Kubernetes)
+- Configuration details
+- Monitoring and logging
+- Performance monitoring
+- Common configurations
+- Best practices
 
-COMMON TASKS
-════════════════════════════════════════════════════════════════════════════════
+**Length**: ~400 lines
 
-Add New L3 Worker:
+**When to Read**: Before running the system in any environment
 
-1. Add method to L3Agents class in agents.py
-2. Update L2 coordinator to call it
-3. Add new output schema in schemas.py
-4. Update formatter for new output type
+### API_EXAMPLES.md
 
-Change LLM Model:
+**Content**:
 
-1. Edit LLMConfig in agents.py
-2. Update L1 model in graph.py
-3. Test with test_local.py
+- All 4 endpoints with detailed examples
+- Request/response formats
+- Error handling
+- Status codes
+- Common use cases
+- Testing scripts
+- Best practices
 
-Extend Knowledge Base:
+**Length**: ~350 lines
 
-1. Add project to MOCK_KNOWLEDGE_BASE in agents.py
-2. Test with test_local.py using new project_id
+**When to Read**: Before integrating API into other systems
 
-Deploy to New Environment:
+### IMPLEMENTATION_SUMMARY.md
 
-1. Update k8s-deployment.yaml for environment
-2. Encode API key: echo -n "key" | base64
-3. Update Secret in manifest
-4. Deploy: kubectl apply -f k8s-deployment.yaml
+**Content**:
 
-Add Authentication:
+- Technical architecture details
+- Layer descriptions (L1, L2, L3)
+- Data model reference
+- LLM integration details
+- Caching strategy
+- Graph orchestration flow
+- Performance characteristics
+- Security considerations
+- Error handling
+- Testing strategy
+- Extension points
 
-1. Implement in main.py middleware
-2. Add JWT/OAuth2 dependencies
-3. Update endpoints with auth requirements
+**Length**: ~450 lines
 
-PROJECT METRICS
-════════════════════════════════════════════════════════════════════════════════
+**When to Read**: Deep technical understanding and customization
 
-Code:
+### PROJECT_INDEX.md
 
-- Total Lines: 2,050+
-- Python Modules: 6
-- Classes: 10+
-- Functions: 25+
-- Tests: 2 test suites
+**Content**: This file - complete file guide and descriptions
 
-Models:
+**Length**: ~400 lines
 
-- Pydantic Models: 15
-- Enum Types: 3
-- Response Classes: 6
+**When to Read**: Understanding file organization and navigation
 
-Deployment:
+## Quick Navigation Guide
 
-- Docker Image: Multi-stage
-- Kubernetes Resources: 11
-- FastAPI Endpoints: 4
+### I want to...
 
-Documentation:
+**Get started quickly**
+→ Read START_HERE.md (5 min)
 
-- Files: 7
-- Pages: 40+
-- Examples: 20+
+**Understand the architecture**
+→ Read IMPLEMENTATION_SUMMARY.md (15 min)
 
-Dependencies:
+**Run the system**
+→ Read EXECUTION_GUIDE.md (10 min per option)
 
-- Python Packages: 7
-- Minimum Python: 3.11
-- Image Size: ~400MB
+**Integrate API**
+→ Read API_EXAMPLES.md (20 min)
 
-SUPPORT & RESOURCES
-════════════════════════════════════════════════════════════════════════════════
+**Deploy to production**
+→ Review k8s-deployment.yaml
+→ Read README.md deployment section
 
-For Setup Issues:
-→ EXECUTION_GUIDE.md → Troubleshooting section
+**Test locally**
+→ Run: `python test_local.py`
+→ Check EXECUTION_GUIDE.md "Option 1"
 
-For API Usage:
-→ API_EXAMPLES.md
+**Modify code**
+→ Read IMPLEMENTATION_SUMMARY.md
+→ Check specific file descriptions below
+→ Review existing code
 
-For Architecture:
-→ IMPLEMENTATION_SUMMARY.md
+**Add new features**
+→ IMPLEMENTATION_SUMMARY.md "Extension Points"
+→ Modify appropriate module (agents.py, graph.py, etc.)
+→ Update schemas.py for new models
+→ Update formatter.py for new outputs
 
-For Deployment:
-→ README.md → Deployment sections
+**Troubleshoot issues**
+→ Check EXECUTION_GUIDE.md troubleshooting tables
+→ Check EXECUTION_GUIDE.md logs section
+→ Check API_EXAMPLES.md error handling
 
-For Code Details:
-→ Read source files in app/
+## File Size & Performance
 
-For Project Status:
-→ DELIVERY_SUMMARY.txt
+| File             | Size          | Purpose           |
+| ---------------- | ------------- | ----------------- |
+| app/main.py      | 320 LOC       | FastAPI server    |
+| app/graph.py     | 380 LOC       | LangGraph engine  |
+| app/agents.py    | 450 LOC       | Worker agents     |
+| app/schemas.py   | 650 LOC       | Data models       |
+| app/formatter.py | 250 LOC       | Output formatting |
+| **Total Core**   | **2,050 LOC** | **Application**   |
 
-For Quick Reference:
-→ This file (PROJECT_INDEX.md)
+## Development Workflow
 
-════════════════════════════════════════════════════════════════════════════════
-Start here: python test_local.py
-Then read: EXECUTION_GUIDE.md → EXECUTION_GUIDE.md
-Then explore: API_EXAMPLES.md for integration
-════════════════════════════════════════════════════════════════════════════════
+1. **Setup** (first time):
+
+   - Clone or download repository
+   - Read START_HERE.md
+   - Run `python setup.py` OR manually setup venv
+
+2. **Local Development**:
+
+   - Edit code in `app/` directory
+   - Run `python test_local.py` to validate
+   - Fix issues based on output
+
+3. **API Testing**:
+
+   - Start server: `python -m uvicorn app.main:app --port 8000`
+   - Run `python test_api.py`
+   - Verify all endpoints work
+
+4. **Docker Testing**:
+
+   - Create .env file with API key
+   - Run `docker-compose up --build`
+   - Test with curl or test_api.py
+
+5. **Kubernetes Deployment**:
+
+   - Review and update k8s-deployment.yaml
+   - Set API key in Secret
+   - Run `kubectl apply -f k8s-deployment.yaml`
+   - Monitor with kubectl logs/describe
+
+6. **Production**:
+   - Ensure all tests pass
+   - Document any customizations
+   - Monitor performance metrics
+   - Implement monitoring/alerting
+
+## Support & References
+
+- **LangGraph Docs**: https://langchain-ai.github.io/langgraph/
+- **LangChain Docs**: https://docs.langchain.com/
+- **FastAPI Docs**: https://fastapi.tiangolo.com/
+- **OpenAI API**: https://platform.openai.com/docs/
+- **Docker Docs**: https://docs.docker.com/
+- **Kubernetes Docs**: https://kubernetes.io/docs/
+
+---
+
+**Last Updated**: December 7, 2025
+**Project Version**: 1.0
+**Maintained By**: aiNions Development Team

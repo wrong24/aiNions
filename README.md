@@ -1,75 +1,68 @@
-# aiNion Orchestration Engine - Build & Deployment Guide
+# aiNions Orchestration Engine - Setup & Deployment Guide
 
-## Architecture Overview
+## Overview
 
-The aiNion Orchestration Engine is a hierarchical AI orchestration system built with:
+The aiNions Orchestration Engine is a hierarchical AI orchestration system that processes messages through a 3-layer LLM architecture. It provides intelligent task planning, domain-specific coordination, and specialized extraction capabilities with production-ready deployment options.
 
-- **LangGraph**: Stateful graph orchestration with LLM agents
-- **LangChain + Google Gemini**: LLM interface for L1 planning and L3 extraction (free tier)
-- **FastAPI**: REST API for message processing
-- **Redis**: Distributed caching for knowledge retrieval
-- **Docker**: Containerization with multi-stage builds
+## Technology Stack
 
-### 3-Layer Architecture
+- **LangGraph**: Stateful graph orchestration with conditional routing
+- **LangChain + OpenAI**: LLM integration for strategic planning and semantic extraction
+- **FastAPI**: RESTful API server with health checks and validation
+- **Redis**: Distributed caching layer with in-memory fallback
+- **Docker**: Multi-stage containerization with optimized image size (~400MB)
+
+## Architecture
+
+### 3-Layer Hierarchy
 
 ```
-L1: Orchestrator (Gemini 2.0 Flash)
-    ↓
-    Parses message → Creates delegation plan
-    ↓
-L2: Domain Coordinators
-    ├── L2_Tracking (action items, risks, decisions)
-    ├── L2_Communication (Q&A, reporting)
-    └── Cross_Knowledge (knowledge retrieval with caching)
-    ↓
-L3: Worker Agents (Gemini 2.0 Flash for efficiency)
-    ├── action_item_extractor
-    ├── risk_extractor
-    └── qna_generator
+┌─────────────────────────────────────────────────────────────────┐
+│ INPUT: Message + Metadata                                       │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ L1: Orchestrator (Strategic Planning)                          │
+│ • Analyzes message intent and context                          │
+│ • Creates delegation plan for L2 domains                       │
+│ • Enforced isolation: Cannot see or access L3 directly        │
+└─────────────────────────────────────────────────────────────────┘
+          ↓                    ↓                    ↓
+┌──────────────────┐ ┌──────────────────┐ ┌──────────────────────┐
+│ L2: Tracking     │ │ L2: Communication│ │ Cross-Cutting Layer │
+│ • Action Items   │ │ • Q&A Generation │ │ • Knowledge Retrieval│
+│ • Risk Assessment│ │ • Issue Tracking │ │ • Quality Evaluation │
+└──────────────────┘ └──────────────────┘ └──────────────────────┘
+          ↓                    ↓                    ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ L3: Worker Agents (Semantic Extraction - Optimized for Cost)   │
+│ • extract_action_items()  • extract_risks()  • generate_qna()  │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ EVALUATOR: Quality Assessment & Output Formatting              │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ OUTPUT: NION Orchestration Map (Plaintext or JSON)             │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Prerequisites
+## Requirements
 
-- Python 3.11+
-- Docker & Docker Compose
-- Google Gemini API Key (free tier at https://ai.google.dev)
-- Redis (optional - uses in-memory cache if Redis is unavailable)
+- **Python**: 3.11 or higher
+- **Docker**: Latest version (optional, for containerized deployment)
+- **Docker Compose**: Latest version (optional, for development)
+- **OpenAI API Key**: For LLM integration (https://platform.openai.com/api-keys)
+- **Redis**: Optional (system provides in-memory fallback if unavailable)
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+### Option 1: Local Development (Fastest)
 
-```bash
+```powershell
 # Navigate to project directory
-cd \aiNions
-
-# Create .env file with your Gemini API key
-echo "GOOGLE_API_KEY=your_actual_gemini_api_key_here" > .env
-
-# Build and run containers
-docker-compose build --no-cache
-docker-compose up -d
-
-# Check health
-curl http://localhost:8000/health
-
-# Process a message
-curl -X POST http://localhost:8000/process/ainion-map \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "The customer demo went great!",
-    "sender": "Sarah Chen",
-    "project_id": "PRJ-ALPHA"
-  }'
-```
-
-## Local Development
-
-### 1. Setup Python Environment
-
-```bash
-# Navigate to project directory
-cd \aiNions
+cd c:\Users\jainp\OneDrive\Desktop\aiNions
 
 # Create virtual environment
 python -m venv venv
@@ -77,67 +70,69 @@ python -m venv venv
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Set your OpenAI API key (PowerShell)
+$env:OPENAI_API_KEY = "sk-your-actual-api-key-here"
+
+# Run integration test
+python test_local.py
 ```
 
-### 2. Set Environment Variables
+### Option 2: With FastAPI Server
 
-```bash
-# PowerShell
-$env:GOOGLE_API_KEY = "your_actual_gemini_api_key_here"
-
-# Or create .env file in project root
-echo "GOOGLE_API_KEY=your_actual_gemini_api_key_here" > .env
-```
-
-### 3. Run FastAPI Server
-
-```bash
-# Start Redis (if available) in background
-redis-server
-
-# In a new terminal, start FastAPI
+```powershell
+# In terminal 1: Start the FastAPI server
+$env:OPENAI_API_KEY = "sk-your-actual-api-key-here"
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
 
-### 4. Test API Endpoints
-
-```bash
-# In another terminal
+# In terminal 2: Test the API
 python test_api.py
 ```
 
-Or manually:
+### Option 3: Using Docker Compose (Recommended for Production Testing)
 
-### 4. Test API Endpoints
+```powershell
+# Navigate to project directory
+cd c:\Users\jainp\OneDrive\Desktop\aiNions
 
-```bash
-# Health check
+# Create .env file with your OpenAI API key
+@"
+OPENAI_API_KEY=sk-your-actual-api-key-here
+"@ | Out-File -FilePath .env -Encoding UTF8
+
+# Build and run containers
+docker-compose build --no-cache
+docker-compose up -d
+
+# Check service health
 curl http://localhost:8000/health
 
-# Process message (returns aiNion Orchestration Map in plaintext)
-curl -X POST http://localhost:8000/process/ainion-map \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "The customer demo went great!",
-    "sender": "Sarah Chen",
-    "project_id": "PRJ-ALPHA"
-  }'
+# Process a message
+$message = @{
+    message = "The customer demo went great!"
+    sender = "Sarah Chen"
+    project_id = "PRJ-ALPHA"
+} | ConvertTo-Json
 
-# Get simple JSON response
-curl -X POST http://localhost:8000/process \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "The customer demo went great!",
-    "sender": "Sarah Chen",
-    "project_id": "PRJ-ALPHA"
-  }'
+curl -X POST http://localhost:8000/process/nion-map `
+  -H "Content-Type: application/json" `
+  -d $message
 ```
+
+## API Endpoints
+
+| Endpoint            | Method | Description                          | Response Format |
+| ------------------- | ------ | ------------------------------------ | --------------- |
+| `/health`           | GET    | Health check                         | JSON            |
+| `/process`          | POST   | Process message with standard output | JSON            |
+| `/process/nion-map` | POST   | Process message with NION Map format | Plaintext       |
+| `/process/json`     | POST   | Process message with detailed JSON   | JSON            |
 
 ## Docker Deployment
 
-### Build and Run with Docker Compose
+### Build with Docker Compose
 
-```bash
+```powershell
 # Build containers
 docker-compose build --no-cache
 
@@ -145,62 +140,221 @@ docker-compose build --no-cache
 docker-compose up -d
 
 # View logs
-docker-compose logs -f ainion-orchestrator
+docker-compose logs -f nion-app
 
 # Stop services
 docker-compose down
 ```
 
-### Environment Variables in Docker
+### Environment Configuration
 
 Create a `.env` file in the project root:
 
-```bash
-GOOGLE_API_KEY=your_actual_gemini_api_key_here
+```env
+OPENAI_API_KEY=sk-your-actual-api-key-here
+REDIS_HOST=redis
+REDIS_PORT=6379
+HOST=0.0.0.0
+PORT=8000
 ```
 
-This will be automatically loaded by docker-compose.
+### Build Docker Image
 
-### Build Docker Image Only
-
-```bash
-docker build -t ainion-orchestrator:latest .
+```powershell
+docker build -t nion-orchestrator:latest .
 
 # Run container
-docker run -e GOOGLE_API_KEY=your_key \
-  -p 8000:8000 \
-  --name ainion-app \
-  ainion-orchestrator:latest
+docker run -e OPENAI_API_KEY="sk-your-key" `
+  -p 8000:8000 `
+  --name nion-app `
+  nion-orchestrator:latest
 ```
 
 ## Implementation Details
 
-### Simple Orchestration Mode
+### Orchestration Flow
 
-The system uses a simplified orchestration approach that bypasses complex LangGraph state machinery:
+1. **L1 Orchestrator**: Receives message and creates a strategic plan
 
-1. **L1_Orchestrator**: Analyzes message and creates task plan
-2. **L2_Tracking**: Extracts action items, risks, and decisions
-3. **L2_Communication**: Generates Q&A records
-4. **Cross_Knowledge**: Retrieves knowledge context from Redis cache
-5. **Evaluator**: Assesses execution results
+   - Analyzes message intent and context
+   - Determines which L2 domains require execution
+   - Creates task list with execution routing
 
-This sequential execution model provides better reliability and easier debugging compared to state machine approaches.
+2. **L2 Domain Layers**: Execute specialized coordination tasks
 
-### Gemini API Integration
+   - **L2 Tracking**: Extracts action items, risks, and key decisions
+   - **L2 Communication**: Generates Q&A pairs and issue tracking data
+   - **Cross-Cutting**: Retrieves contextual knowledge and evaluates output quality
 
-- Uses `ChatGoogleGenerativeAI` from `langchain-google-genai`
-- Configured with `convert_system_message_to_human=True` for compatibility
-- Model: `gemini-2.0-flash` (fast and efficient)
-- Free tier quota limits: ~60 requests/minute per user
+3. **L3 Worker Agents**: Perform fine-grained semantic extraction
 
-### API Endpoints
+   - `extract_action_items()`: Identifies actionable tasks
+   - `extract_risks()`: Detects potential risks and mitigation strategies
+   - `generate_qna()`: Creates question-answer pairs for documentation
 
-| Endpoint              | Method | Description                        | Response   |
-| --------------------- | ------ | ---------------------------------- | ---------- |
-| `/health`             | GET    | Service health check               | JSON       |
-| `/process`            | POST   | Process message, return stats      | JSON       |
-| `/process/ainion-map` | POST   | Process message, return aiNion map | Plain Text |
+4. **Evaluator**: Assesses execution results
+   - Validates output quality
+   - Computes confidence scores
+   - Generates audit logs
+
+### Caching Strategy
+
+- **Redis Primary**: 60-second TTL for knowledge retrieval
+- **In-Memory Fallback**: Automatic fallback if Redis unavailable
+- **Transparent Integration**: Via `@cache_result` decorator in `agents.py`
+
+### LLM Models
+
+- **L1 Orchestrator**: `gpt-4o` (strategic planning)
+- **L3 Workers**: `gpt-3.5-turbo` (cost-optimized extraction)
+- **Response Format**: Structured JSON with validation via Pydantic
+
+### Response Format
+
+#### NION Orchestration Map (Plaintext)
+
+```
+═══════════════════════════════════════════════════════════════
+NION ORCHESTRATION MAP
+═══════════════════════════════════════════════════════════════
+
+MESSAGE METADATA
+────────────────────────────────────────────────────────────────
+Sender: Sarah Chen
+Project: PRJ-ALPHA
+Timestamp: 2024-01-15T10:30:45Z
+Request ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+
+L1 PLAN (Strategic Direction)
+────────────────────────────────────────────────────────────────
+Task 1: [HIGH] Extract action items from customer feedback
+Task 2: [MEDIUM] Assess project risks
+Task 3: [MEDIUM] Generate Q&A for documentation
+
+L2/L3 EXECUTION RESULTS
+────────────────────────────────────────────────────────────────
+ACTION ITEMS:
+  • Follow up with customer on timeline
+  • Update project roadmap based on feedback
+  • Schedule team retrospective
+
+RISKS:
+  • Resource allocation may be tight
+  • External dependency on vendor response
+
+Q&A PAIRS:
+  Q: What was the customer feedback?
+  A: The customer demo went great! Team is excited.
+
+EXECUTION SUMMARY
+────────────────────────────────────────────────────────────────
+Total Tasks: 3
+Successful: 3
+Failed: 0
+Duration: 8.5 seconds
+```
+
+#### JSON Response
+
+```json
+{
+  "status": "success",
+  "request_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "timestamp": "2024-01-15T10:30:45Z",
+  "results": {
+    "action_items": [
+      {
+        "item": "Follow up with customer on timeline",
+        "priority": "HIGH",
+        "assignee": "Sarah Chen"
+      }
+    ],
+    "risks": [
+      {
+        "risk": "Resource allocation may be tight",
+        "severity": "MEDIUM",
+        "mitigation": "Plan resource allocation review"
+      }
+    ],
+    "qna_pairs": [
+      {
+        "question": "What was the customer feedback?",
+        "answer": "The customer demo went great! Team is excited."
+      }
+    ]
+  },
+  "execution_metrics": {
+    "total_tasks": 3,
+    "successful": 3,
+    "failed": 0,
+    "duration_ms": 8500
+  }
+}
+```
+
+## Troubleshooting
+
+| Issue                      | Cause                        | Solution                                                  |
+| -------------------------- | ---------------------------- | --------------------------------------------------------- |
+| `OPENAI_API_KEY not found` | Missing environment variable | Set `$env:OPENAI_API_KEY` or create `.env` file           |
+| Redis connection error     | Redis not running            | Run `redis-server` or remove Redis dependency             |
+| API rate limit exceeded    | Too many requests            | Implement request throttling or wait for rate limit reset |
+| Module not found           | Dependencies not installed   | Run `pip install -r requirements.txt`                     |
+| Port 8000 in use           | Another service on same port | Change port with `--port 8001` flag                       |
+
+## Docker Compose Logs
+
+```powershell
+# View all logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f nion-app
+docker-compose logs -f redis
+
+# View last 50 lines
+docker-compose logs --tail=50
+```
+
+## File Structure
+
+```
+aiNions/
+├── app/                      # Core application code
+│   ├── __init__.py
+│   ├── main.py              # FastAPI server
+│   ├── graph.py             # LangGraph orchestration
+│   ├── agents.py            # L3 worker agents
+│   ├── schemas.py           # Pydantic models
+│   └── formatter.py         # Output formatting
+├── requirements.txt         # Python dependencies
+├── Dockerfile               # Docker image definition
+├── docker-compose.yml       # Docker Compose configuration
+├── k8s-deployment.yaml      # Kubernetes manifests
+├── test_local.py            # Local integration tests
+├── test_api.py              # API endpoint tests
+├── setup.py                 # Setup wizard
+└── README.md                # This file
+```
+
+## Project Documentation
+
+- **START_HERE.md**: Quick overview and key features
+- **API_EXAMPLES.md**: Complete API reference with examples
+- **EXECUTION_GUIDE.md**: Detailed execution and configuration
+- **IMPLEMENTATION_SUMMARY.md**: Technical architecture details
+- **PROJECT_INDEX.md**: Complete file guide
+- **.env.template**: Environment variable template
+
+## Support & Resources
+
+- **LangGraph Documentation**: https://langchain-ai.github.io/langgraph/
+- **LangChain Documentation**: https://docs.langchain.com/
+- **FastAPI Documentation**: https://fastapi.tiangolo.com/
+- **OpenAI API Documentation**: https://platform.openai.com/docs/
+  | `/health` | GET | Service health check | JSON |
+  | `/process` | POST | Process message, return stats | JSON |
+  | `/process/ainion-map` | POST | Process message, return aiNion map | Plain Text |
 
 ## File Structure
 

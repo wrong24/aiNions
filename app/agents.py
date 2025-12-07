@@ -5,6 +5,7 @@ from typing import Dict, List, Any, Optional
 from functools import wraps
 import logging
 from datetime import datetime
+from google.api_core.exceptions import ResourceExhausted
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -103,6 +104,35 @@ def cache_result(ttl: int = RedisConfig.TTL):
     return decorator
 
 
+def retry_on_429(max_retries=3, initial_delay=4):
+    """Decorator to retry on Rate Limit errors"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            retries = 0
+            delay = initial_delay
+            while retries < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except ResourceExhausted:
+                    logger.warning(f"Rate limit hit (429). Retrying in {delay} seconds...")
+                    time.sleep(delay)
+                    retries += 1
+                    delay *= 2  # Exponential backoff
+                except Exception as e:
+                    # Sometimes 429s are wrapped in generic exceptions
+                    if "429" in str(e):
+                        logger.warning(f"Rate limit hit (generic). Retrying in {delay} seconds...")
+                        time.sleep(delay)
+                        retries += 1
+                        delay *= 2
+                    else:
+                        raise e
+            raise Exception(f"Max retries exceeded for Rate Limit in {func.__name__}")
+        return wrapper
+    return decorator
+
+
 class ActionItemExtractionSchema(BaseModel):
     """Schema for action item extraction"""
     action_items: List[ActionItem] = Field(default_factory=list)
@@ -138,6 +168,7 @@ class L3Agents:
             convert_system_message_to_human=True
         )
 
+    @retry_on_429()
     def extract_action_items(self, content: str, project_context: Dict[str, Any]) -> ActionItemExtractionSchema:
         """L3 Worker: Extract action items using Gemini"""
         parser = JsonOutputParser(pydantic_object=ActionItemExtractionSchema)
@@ -179,6 +210,7 @@ Message to analyze:
             extraction_confidence=parsed.get("extraction_confidence", 0.85)
         )
 
+    @retry_on_429()
     def extract_risks(self, content: str, project_context: Dict[str, Any]) -> RiskExtractionSchema:
         """L3 Worker: Extract risks using Gemini"""
         parser = JsonOutputParser(pydantic_object=RiskExtractionSchema)
@@ -219,6 +251,7 @@ Message to analyze:
             extraction_confidence=parsed.get("extraction_confidence", 0.85)
         )
 
+    @retry_on_429()
     def generate_qna(self, content: str, project_context: Dict[str, Any]) -> QnAGenerationSchema:
         """L3 Worker: Generate Q&A using Gemini"""
         parser = JsonOutputParser(pydantic_object=QnAGenerationSchema)
