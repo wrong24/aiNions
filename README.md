@@ -42,7 +42,7 @@ L3: Worker Agents (gpt-3.5-turbo for cost)
 
 ```bash
 # Navigate to project directory
-cd c:\Users\jainp\OneDrive\Desktop\aiNions
+cd \aiNions
 
 # Create virtual environment
 python -m venv venv
@@ -246,7 +246,7 @@ kubectl get hpa -n nion-system
 ## File Structure
 
 ```
-c:\Users\jainp\OneDrive\Desktop\aiNions\
+\aiNions\
 ├── app/
 │   ├── __init__.py
 │   ├── main.py                 # FastAPI application

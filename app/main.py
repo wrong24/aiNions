@@ -9,9 +9,9 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from schemas import InputMessage
-from graph import NionGraph
-from formatter import NionFormatter
+from app.schemas import InputMessage, OrchestrationState
+from app.graph import NionGraph
+from app.formatter import NionFormatter
 
 # Logging configuration
 logging.basicConfig(
@@ -154,9 +154,9 @@ async def process_message_with_map(request: ProcessRequest):
             timestamp=datetime.utcnow()
         )
 
-        # Get graph and invoke
+        # Get graph and invoke - using direct orchestration instead of LangGraph
         graph = get_graph()
-        result_state = graph.invoke(input_message)
+        result_state = graph.invoke_simple(input_message)
 
         execution_time_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
 

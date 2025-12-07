@@ -6,12 +6,12 @@ from functools import wraps
 import logging
 from datetime import datetime
 
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
-from schemas import (
+from app.schemas import (
     ActionItem, Risk, QnARecord, L2TrackingOutput,
     L2CommunicationOutput, CrossCuttingOutput, Decision
 )
@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 class LLMConfig:
-    """LLM Configuration"""
-    GPT_4O = "gpt-4o"
-    GPT_3_5_TURBO = "gpt-3.5-turbo"
+    """LLM Configuration for Google Gemini"""
+    MODEL_ORCHESTRATOR = "gemini-2.0-flash"
+    MODEL_WORKER = "gemini-2.0-flash"
     TEMPERATURE = 0.7
     MAX_TOKENS = 2000
 
@@ -122,22 +122,24 @@ class QnAGenerationSchema(BaseModel):
 
 
 class L3Agents:
-    """L3 Worker Agents - Actual LLM execution"""
+    """L3 Worker Agents - Google Gemini execution"""
 
     def __init__(self):
-        self.gpt_4o = ChatOpenAI(
-            model=LLMConfig.GPT_4O,
+        self.gemini_orchestrator = ChatGoogleGenerativeAI(
+            model=LLMConfig.MODEL_ORCHESTRATOR,
             temperature=LLMConfig.TEMPERATURE,
-            max_tokens=LLMConfig.MAX_TOKENS
+            max_output_tokens=LLMConfig.MAX_TOKENS,
+            convert_system_message_to_human=True
         )
-        self.gpt_3_5 = ChatOpenAI(
-            model=LLMConfig.GPT_3_5_TURBO,
+        self.gemini_worker = ChatGoogleGenerativeAI(
+            model=LLMConfig.MODEL_WORKER,
             temperature=LLMConfig.TEMPERATURE,
-            max_tokens=LLMConfig.MAX_TOKENS
+            max_output_tokens=LLMConfig.MAX_TOKENS,
+            convert_system_message_to_human=True
         )
 
     def extract_action_items(self, content: str, project_context: Dict[str, Any]) -> ActionItemExtractionSchema:
-        """L3 Worker: Extract action items using LLM"""
+        """L3 Worker: Extract action items using Gemini"""
         parser = JsonOutputParser(pydantic_object=ActionItemExtractionSchema)
 
         system_prompt = SystemMessage(content="""You are an expert project manager AI assistant.
@@ -157,7 +159,7 @@ Message to analyze:
 
 {parser.get_format_instructions()}""")
 
-        response = self.gpt_3_5.invoke([system_prompt, user_prompt])
+        response = self.gemini_worker.invoke([system_prompt, user_prompt])
         parsed = json.loads(response.content)
 
         action_items = [
@@ -178,7 +180,7 @@ Message to analyze:
         )
 
     def extract_risks(self, content: str, project_context: Dict[str, Any]) -> RiskExtractionSchema:
-        """L3 Worker: Extract risks using LLM"""
+        """L3 Worker: Extract risks using Gemini"""
         parser = JsonOutputParser(pydantic_object=RiskExtractionSchema)
 
         system_prompt = SystemMessage(content="""You are an expert risk analyst AI assistant.
@@ -198,7 +200,7 @@ Message to analyze:
 
 {parser.get_format_instructions()}""")
 
-        response = self.gpt_3_5.invoke([system_prompt, user_prompt])
+        response = self.gemini_worker.invoke([system_prompt, user_prompt])
         parsed = json.loads(response.content)
 
         risks = [
@@ -218,7 +220,7 @@ Message to analyze:
         )
 
     def generate_qna(self, content: str, project_context: Dict[str, Any]) -> QnAGenerationSchema:
-        """L3 Worker: Generate Q&A using LLM"""
+        """L3 Worker: Generate Q&A using Gemini"""
         parser = JsonOutputParser(pydantic_object=QnAGenerationSchema)
 
         system_prompt = SystemMessage(content="""You are an expert communication analyst AI assistant.
@@ -238,7 +240,7 @@ Message to analyze:
 
 {parser.get_format_instructions()}""")
 
-        response = self.gpt_3_5.invoke([system_prompt, user_prompt])
+        response = self.gemini_worker.invoke([system_prompt, user_prompt])
         parsed = json.loads(response.content)
 
         qna_records = [

@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for Nion Orchestration Engine
-FROM python:3.11-slim as base
+FROM python:3.11-slim AS base
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Build stage
-FROM base as builder
+FROM base AS builder
 
 RUN pip install --user --no-cache-dir -r requirements.txt
 

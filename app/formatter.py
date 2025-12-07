@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any
 from datetime import datetime
 
-from schemas import OrchestrationState, ExecutionResult, TaskType
+from app.schemas import OrchestrationState, ExecutionResult, TaskType
 
 logger = logging.getLogger(__name__)
 
@@ -151,33 +151,37 @@ class NionFormatter:
     @staticmethod
     def generate_json_output(state: OrchestrationState) -> Dict[str, Any]:
         """Generate JSON output of orchestration state"""
+        # Ensure state is serializable by using model_dump_json and then loading
+        import json
+        state_dict = json.loads(state.model_dump_json())
+        
         return {
-            "state_id": state.state_id,
+            "state_id": state_dict.get("state_id"),
             "message_metadata": {
-                "message_id": state.input_message.message_id,
-                "sender": state.input_message.sender,
-                "project_id": state.input_message.project_id,
-                "timestamp": state.input_message.timestamp.isoformat() if state.input_message.timestamp else None
+                "message_id": state_dict.get("input_message", {}).get("message_id"),
+                "sender": state_dict.get("input_message", {}).get("sender"),
+                "project_id": state_dict.get("input_message", {}).get("project_id"),
+                "timestamp": state_dict.get("input_message", {}).get("timestamp")
             },
             "plan": [
                 {
-                    "task_id": task.task_id,
-                    "domain": task.domain.value,
-                    "description": task.description,
-                    "priority": task.priority,
-                    "status": task.status
+                    "task_id": task.get("task_id"),
+                    "domain": task.get("domain"),
+                    "description": task.get("description"),
+                    "priority": task.get("priority"),
+                    "status": task.get("status")
                 }
-                for task in state.plan
+                for task in state_dict.get("plan", [])
             ],
             "execution_results": {
                 task_id: {
-                    "task_id": result.task_id,
-                    "task_type": result.task_type.value,
-                    "status": result.status,
-                    "duration_ms": result.duration_ms,
-                    "output": result.output
+                    "task_id": result.get("task_id"),
+                    "task_type": result.get("task_type"),
+                    "status": result.get("status"),
+                    "duration_ms": result.get("duration_ms"),
+                    "output": result.get("output")
                 }
-                for task_id, result in state.execution_results.items()
+                for task_id, result in state_dict.get("execution_results", {}).items()
             },
-            "logs": state.logs
+            "logs": state_dict.get("logs", [])
         }
