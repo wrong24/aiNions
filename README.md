@@ -1,8 +1,8 @@
-# Nion Orchestration Engine - Build & Deployment Guide
+# aiNion Orchestration Engine - Build & Deployment Guide
 
 ## Architecture Overview
 
-The Nion Orchestration Engine is a hierarchical AI orchestration system built with:
+The aiNion Orchestration Engine is a hierarchical AI orchestration system built with:
 
 - **LangGraph**: Stateful graph orchestration with LLM agents
 - **LangChain + Google Gemini**: LLM interface for L1 planning and L3 extraction (free tier)
@@ -54,7 +54,7 @@ docker-compose up -d
 curl http://localhost:8000/health
 
 # Process a message
-curl -X POST http://localhost:8000/process/nion-map \
+curl -X POST http://localhost:8000/process/ainion-map \
   -H "Content-Type: application/json" \
   -d '{
     "message": "The customer demo went great!",
@@ -114,8 +114,8 @@ Or manually:
 # Health check
 curl http://localhost:8000/health
 
-# Process message (returns NION Orchestration Map in plaintext)
-curl -X POST http://localhost:8000/process/nion-map \
+# Process message (returns aiNion Orchestration Map in plaintext)
+curl -X POST http://localhost:8000/process/ainion-map \
   -H "Content-Type: application/json" \
   -d '{
     "message": "The customer demo went great!",
@@ -145,7 +145,7 @@ docker-compose build --no-cache
 docker-compose up -d
 
 # View logs
-docker-compose logs -f nion-orchestrator
+docker-compose logs -f ainion-orchestrator
 
 # Stop services
 docker-compose down
@@ -164,13 +164,13 @@ This will be automatically loaded by docker-compose.
 ### Build Docker Image Only
 
 ```bash
-docker build -t nion-orchestrator:latest .
+docker build -t ainion-orchestrator:latest .
 
 # Run container
 docker run -e GOOGLE_API_KEY=your_key \
   -p 8000:8000 \
-  --name nion-app \
-  nion-orchestrator:latest
+  --name ainion-app \
+  ainion-orchestrator:latest
 ```
 
 ## Implementation Details
@@ -196,11 +196,11 @@ This sequential execution model provides better reliability and easier debugging
 
 ### API Endpoints
 
-| Endpoint            | Method | Description                      | Response   |
-| ------------------- | ------ | -------------------------------- | ---------- |
-| `/health`           | GET    | Service health check             | JSON       |
-| `/process`          | POST   | Process message, return stats    | JSON       |
-| `/process/nion-map` | POST   | Process message, return NION map | Plain Text |
+| Endpoint              | Method | Description                        | Response   |
+| --------------------- | ------ | ---------------------------------- | ---------- |
+| `/health`             | GET    | Service health check               | JSON       |
+| `/process`            | POST   | Process message, return stats      | JSON       |
+| `/process/ainion-map` | POST   | Process message, return aiNion map | Plain Text |
 
 ## File Structure
 
@@ -212,7 +212,7 @@ This sequential execution model provides better reliability and easier debugging
 │   ├── schemas.py              # Pydantic models and data structures
 │   ├── agents.py               # L3 workers + Cross-cutting agents (Gemini integration)
 │   ├── graph.py                # LangGraph + simple orchestration
-│   └── formatter.py            # NION output formatting
+│   └── formatter.py            # aiNion output formatting
 ├── requirements.txt            # Python dependencies (Gemini, LangGraph, FastAPI, etc.)
 ├── Dockerfile                  # Multi-stage Docker build
 ├── docker-compose.yml          # Docker Compose configuration (Redis + FastAPI)
@@ -243,13 +243,13 @@ Key changes from OpenAI version:
 - Uses Gemini 2.0 Flash model instead of GPT-4o
 - Simplified orchestration bypasses complex LangGraph state machinery
 
-## NION Orchestration Map Format
+## aiNion Orchestration Map Format
 
 The formatter generates output like:
 
 ```
 ================================================================================
-NION ORCHESTRATION MAP
+aiNION ORCHESTRATION MAP
 ================================================================================
 
 MESSAGE METADATA
@@ -347,7 +347,7 @@ If you encounter LangGraph state errors:
 
 ```bash
 # Check logs
-docker-compose logs nion-orchestrator
+docker-compose logs ainion-orchestrator
 
 # Common issues:
 # 1. Missing .env file with GOOGLE_API_KEY
@@ -369,7 +369,7 @@ docker-compose up -d
 curl http://localhost:8000/health
 
 # If failing, check logs:
-docker logs nion-orchestrator
+docker logs ainion-orchestrator
 
 # Common causes:
 # 1. GOOGLE_API_KEY not set
@@ -423,11 +423,11 @@ All components log to stdout/stderr:
 
 ```bash
 # View logs in Docker
-docker-compose logs -f nion-orchestrator
+docker-compose logs -f ainion-orchestrator
 
 # View specific log entries
-docker-compose logs nion-orchestrator | grep "\[L1\]"
-docker-compose logs nion-orchestrator | grep "ERROR"
+docker-compose logs ainion-orchestrator | grep "\[L1\]"
+docker-compose logs ainion-orchestrator | grep "ERROR"
 ```
 
 ### Log Levels
